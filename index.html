@@ -1,6 +1,3 @@
-
-
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -205,152 +202,176 @@ th, td {
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.1/xlsx.full.min.js"></script>
 
     <script>
-        function calculateEMI() {
-            // Get user input
-            const borrowerName = document.getElementById("borrowerName").value; // Borrower name
-            const loanAmount = parseFloat(document.getElementById("loanAmount").value);
-            const loanId = document.getElementById("loanId").value;
-            const startDate = new Date(document.getElementById("startDate").value);
-            const tenure = parseInt(document.getElementById("tenure").value);
-            const interestRate = parseFloat(document.getElementById("interestRate").value) / 100;
-            const processingFeeRate = parseFloat(document.getElementById("processingFee").value) / 100;
+       function calculateEMI() {
+    // Get user input
+    const borrowerName = document.getElementById("borrowerName").value;
+    const loanAmount = parseFloat(document.getElementById("loanAmount").value);
+    const loanId = document.getElementById("loanId").value;
+    const startDate = new Date(document.getElementById("startDate").value);
+    const tenure = parseInt(document.getElementById("tenure").value);
+    const interestRate = parseFloat(document.getElementById("interestRate").value) / 100;
+    const processingFeeRate = parseFloat(document.getElementById("processingFee").value) / 100;
 
-            // Monthly Interest Rate
-            const monthlyInterestRate = interestRate;
+    // Monthly Interest Rate
+    const monthlyInterestRate = interestRate;
 
-            // Principal per month
-            const principalPerMonth = loanAmount / tenure;
+    // Principal per month
+    const principalPerMonth = loanAmount / tenure;
 
-            // Interest per month (calculated on total principal)
-            const interestPerMonth = loanAmount * monthlyInterestRate;
+    // Interest per month (calculated on total principal)
+    const interestPerMonth = loanAmount * monthlyInterestRate;
 
-            // Processing Fee to be added to the first EMI
-            const processingFee = loanAmount * processingFeeRate;
+    // Processing Fee to be added to the first EMI
+    const processingFee = loanAmount * processingFeeRate;
 
-            // First EMI includes the processing fee
-            const firstEMIWithFee = principalPerMonth + interestPerMonth + processingFee;
+    // First EMI includes the processing fee
+    const firstEMIWithFee = principalPerMonth + interestPerMonth + processingFee;
 
-            let schedule = [];
-            let balance = loanAmount;
-            let totalInterest = 0;
+    let schedule = [];
+    let balance = loanAmount;
+    let totalInterest = 0;
 
-            // Generate the schedule
-            for (let i = 1; i <= tenure; i++) {
-                const interestPayment = interestPerMonth;
-                const principalPayment = principalPerMonth;
-                balance -= principalPayment;
-                totalInterest += interestPayment;
+    // Generate the schedule
+    for (let i = 1; i <= tenure; i++) {
+        const interestPayment = interestPerMonth;
+        const principalPayment = principalPerMonth;
 
-                let paymentDate = new Date(startDate);
-                paymentDate.setMonth(paymentDate.getMonth() + i);
+        // Update the balance correctly
+        if (i > 1) {
+            balance -= principalPayment;  // Decrease the balance by the principal payment each month
+        }
 
-                schedule.push({
-                    serial: i,  // Serial number
-                    date: paymentDate.toISOString().split('T')[0], // Format YYYY-MM-DD
-                    principalOutstanding: balance.toFixed(2),
-                    principal: principalPayment.toFixed(2),
-                    interest: interestPayment.toFixed(2),
-                    totalEMI: (i === 1 ? firstEMIWithFee.toFixed(2) : (principalPayment + interestPayment).toFixed(2)),
-                });
-            }
+        totalInterest += interestPayment;
 
-            // Generate table for EMI Schedule with S.no
-            let tableHTML = ` 
+        let paymentDate = new Date(startDate);
+        paymentDate.setMonth(paymentDate.getMonth() + i);
+
+        // For the first EMI, principalOutstanding should be the original loan amount
+        // For subsequent EMIs, principalOutstanding should be the remaining balance
+        let principalOutstanding = balance.toFixed(2);
+
+        schedule.push({
+            serial: i,
+            date: paymentDate.toISOString().split('T')[0],
+            principalOutstanding: principalOutstanding,
+            principal: principalPayment.toFixed(2),
+            interest: interestPayment.toFixed(2),
+            totalEMI: (i === 1 ? firstEMIWithFee.toFixed(2) : (principalPayment + interestPayment).toFixed(2)),
+        });
+    }
+
+    // Generate table for EMI Schedule
+    let tableHTML = ` 
 <table>
-            <thead>
-                <tr>
-                    <th rowspan="2">S.no</th>
-                    <th rowspan="2">Date</th>
-                    <th colspan="2">EMI</th>
-                    <th rowspan="2">Total EMI</th>
-                    <th rowspan="2">Principal Outstanding</th>
-                </tr>
-                <tr>
-                    <th>Principal Amount</th>
-                    <th>Interest</th>
-                </tr>
-            </thead>
-            <tbody>
-                
+    <thead>
+        <tr>
+            <th rowspan="2">S.no</th>
+            <th rowspan="2">Date</th>
+            <th rowspan="2">Principal Outstanding</th>
+            <th colspan="2">EMI</th>
+            <th rowspan="2">Total EMI</th>     
+        </tr>
+        <tr>
+            <th>Principal Amount</th>
+            <th>Interest</th>
+        </tr>
+    </thead>
+    <tbody>
+`;
 
-
-            `;
-
-            schedule.forEach(row => {
-                tableHTML += ` 
-                    <tr>
-                        <td>${row.serial}</td>
-                        <td>${row.date}</td>
-                        <td>${row.principal}</td>
-                        <td>${row.interest}</td>
-                        <td>${row.totalEMI}</td>
-                        <td>${row.principalOutstanding}</td>
-                    </tr>
-                `;
-            });
-
-            tableHTML += ` 
-                <tr>
-                    <td colspan="2"><strong>Total</strong></td>
-                    <td><strong>${loanAmount.toFixed(2)}</strong></td>
-                    <td><strong>${totalInterest.toFixed(2)}</strong></td>
-                    <td><strong>${(loanAmount + totalInterest + processingFee).toFixed(2)}</strong></td>
-                    <td></td>
-                </tr>
-            </tbody>
-        </table>
+    schedule.forEach(row => {
+        tableHTML += ` 
+            <tr>
+                <td>${row.serial}</td>
+                <td>${row.date}</td>
+                <td>${row.principalOutstanding}</td>
+                <td>${row.principal}</td>
+                <td>${row.interest}</td>
+                <td>${row.totalEMI}</td>
+            </tr>
         `;
+    });
 
-            document.getElementById("emiSchedule").innerHTML = tableHTML;
+    tableHTML += ` 
+        <tr>
+            <td colspan="2"><strong>Total</strong></td>
+            <td>0</td>
+            <td><strong>${loanAmount.toFixed(2)}</strong></td>
+            <td><strong>${totalInterest.toFixed(2)}</strong></td>
+            <td><strong>${(loanAmount + totalInterest + processingFee).toFixed(2)}</strong></td>
+            
+        </tr>
+    </tbody>
+</table>
+`;
 
-            // Pie Chart Data
-            const pieChartData = {
-                labels: ['Principal', 'Interest', 'Processing Fee'],
-                datasets: [{
-                    label: 'Loan Distribution',
-                    data: [
-                        loanAmount,             // Principal
-                        totalInterest,          // Interest
-                        processingFee           // Processing Fee
-                    ],
-                    backgroundColor: ['#36a2eb', '#ff6384', '#ffcd56'],
-                    hoverBackgroundColor: ['#36a2eb', '#ff6384', '#ffcd56']
-                }]
-            };
+    document.getElementById("emiSchedule").innerHTML = tableHTML;
 
-            const ctx = document.getElementById('chartCanvas').getContext('2d');
-            new Chart(ctx, {
-                type: 'pie',
-                data: pieChartData,
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: {
-                            position: 'top',
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(tooltipItem) {
-                                    return `${tooltipItem.label}: ${(tooltipItem.raw / (loanAmount + totalInterest + processingFee) * 100).toFixed(2)}% (${tooltipItem.raw.toFixed(2)})`;
-                                }
-                            }
+    // Pie Chart Data
+    const pieChartData = {
+        labels: ['Principal', 'Interest', 'Processing Fee'],
+        datasets: [{
+            label: 'Loan Distribution',
+            data: [
+                loanAmount,             // Principal
+                totalInterest,          // Interest
+                processingFee           // Processing Fee
+            ],
+            backgroundColor: ['#36a2eb', '#ff6384', '#ffcd56'],
+            hoverBackgroundColor: ['#36a2eb', '#ff6384', '#ffcd56']
+        }]
+    };
+
+    // Destroy the previous chart if it exists
+    const chartCanvas = document.getElementById('chartCanvas');
+    if (window.myPieChart) {
+        window.myPieChart.destroy();
+    }
+
+    // Create a new chart
+    const ctx = chartCanvas.getContext('2d');
+    window.myPieChart = new Chart(ctx, {
+        type: 'pie',
+        data: pieChartData,
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'top',
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(tooltipItem) {
+                            return `${tooltipItem.label}: ${(tooltipItem.raw / (loanAmount + totalInterest + processingFee) * 100).toFixed(2)}% (${tooltipItem.raw.toFixed(2)})`;
                         }
                     }
                 }
-            });
+            }
         }
+    });
+}
 
-      function downloadPDF() {
+
+ function downloadPDF() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
 
-    // Add a header title
+    // Correct image URL
+    const letterheadImage = "https://raw.githubusercontent.com/yandrapavankarthik/emi-calculator/refs/heads/main/letterhead.png";
+
+    // Add letterhead image to cover full A4 page
+    const pageWidth = doc.internal.pageSize.getWidth();   // A4 page width
+    const pageHeight = doc.internal.pageSize.getHeight(); // A4 page height
+
+    // Add the letterhead image, scaling to fit the full page
+    doc.addImage(letterheadImage, 'PNG', 0, 0, pageWidth, pageHeight); // Full-page image
+
+    // Set font for text
     doc.setFontSize(20);
-    doc.text(" ", 105, 15, { align: "center" });
-    
-    doc.setFontSize(12);
+    doc.text("", pageWidth / 2, 15, { align: "center" });
 
     // Left side content (borrower details) starting at Y-position 40
+    doc.setFontSize(11);
     doc.text(`Borrower Name: ${document.getElementById("borrowerName").value}`, 10, 40);
     doc.text(`Loan ID: ${document.getElementById("loanId").value}`, 10, 50);
     doc.text(`Loan Amount: ${parseFloat(document.getElementById("loanAmount").value).toFixed(2)}`, 10, 60);
@@ -368,21 +389,25 @@ th, td {
     // Right side - Pie chart with adjusted Y-position for gap
     const chartCanvas = document.getElementById("chartCanvas");
     const chartImg = chartCanvas.toDataURL("image/png");
-    doc.addImage(chartImg, 'PNG', 130, 40, 60, 60); // Position for the chart
+    doc.addImage(chartImg, 'PNG', pageWidth - 80, 40, 60, 60); // Position for the chart
+
+    // Add some gap before the table
+    const tableStartY = 130; // Position where the table should start
+    const footerGap = 20;    // Gap between the table and footer to avoid overlap
 
     // EMI Schedule Table
-    doc.setFontSize(12);
-    doc.text('EMI Schedule Table:', 10, 130); // Position for table header
+    doc.setFontSize(10);
+    doc.text('EMI Schedule Table:', 10, tableStartY); // Position for table header
 
     const table = document.querySelector("table");
 
     const tableOptions = {
         html: table,
-        startY: 140,  // Table starts after borrower details and chart
-        margin: { top: 10, left: 10, right: 10, bottom: 10 },
+        startY: tableStartY + 10,  // Table starts just below the title
+        margin: { top: 10, left: 10, right: 10, bottom: footerGap }, // Add bottom margin
         styles: {
             lineWidth: 0.1,
-            cellPadding: 3,
+            cellPadding: 2,
             fontSize: 10,
             valign: 'middle',
             halign: 'center',
@@ -414,6 +439,7 @@ th, td {
     // Save PDF
     doc.save("emi-schedule.pdf");
 }
+
 
 
         function downloadExcel() {
